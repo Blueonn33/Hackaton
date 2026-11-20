@@ -20,6 +20,9 @@ namespace Hackaton
                 .AddEntityFrameworkStores<ApplicationDbContext>();
             builder.Services.AddControllersWithViews();
 
+            builder.Services.AddScoped<MapService>();
+
+
             var app = builder.Build();
 
             // Configure the HTTP request pipeline.
