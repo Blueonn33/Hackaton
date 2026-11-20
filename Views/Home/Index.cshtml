@@ -4,41 +4,43 @@
 }
 
   <h1>Заетост и професии по области</h1>
-  <p class="lead">Изберете показател, пол, тримесечие и ниво на картата, после посочете област или статистически район. Данните, означени като „ДЕМО“, са измислени за илюстрация.</p>
+  <p class="lead">Изберете показател и посочете място на картата. Филтрите се показват според наличните данни. Данните, означени като „ДЕМО“, са измислени за илюстрация.</p>
   <div class="kpis" id="kpis" aria-live="polite"></div>
 
   <section class="panel" aria-labelledby="mt">
     <h2 id="mt">Карта</h2>
     <div class="controls">
-      <div class="wide"><label for="metric">Показател</label><select id="metric"></select></div>
-      <div><label for="sex">Пол</label><select id="sex"><option value="0">Общо</option><option value="1">Мъже</option><option value="2">Жени</option></select></div>
-      <div><label for="per">Тримесечие</label><select id="per"><option value="2026Q1">Q1 2026</option><option value="2026Q2" selected>Q2 2026</option></select></div>
-      <div><label for="lvl">Ниво на картата</label><select id="lvl"><option value="obl">Области (28)</option><option value="reg">Статистически райони (6)</option></select></div>
+      <div class="wide"><label for="metric">Показател</label><select id="metric" disabled></select></div>
+      <div class="wide" id="activityControl" hidden><label for="activity">Икономическа дейност</label><select id="activity"></select></div>
+      <div id="sexControl" hidden><label for="sex">Пол</label><select id="sex"></select></div>
+      <div id="perControl" hidden><label for="per">Тримесечие</label><select id="per"></select></div>
+      <div id="lvlControl" hidden><label for="lvl">Ниво на картата</label><select id="lvl"></select></div>
     </div>
     <div class="mapgrid">
       <div>
-        <svg id="map" viewBox="0 0 900 585" role="group" aria-label="Карта на областите в България"></svg>
+        <svg id="map" data-geometry="@Url.Content("~/data/map.json")" data-dataset="@Url.Action("Dataset", "Api")" viewBox="0 0 900 585" role="group" aria-label="Карта на България"></svg>
         <div class="legend" id="legend"><span id="lmin"></span><i></i><span id="lmax"></span></div>
       </div>
       <aside class="info" id="info" aria-live="polite"></aside>
     </div>
+    <section class="activity-data" id="activityData" aria-labelledby="at" hidden>
+      <h3 id="at">Заети лица по икономически дейности и пол, Q3 2026</h3>
+      <p class="sub">България, хиляди души (НСИ, КИД-2025). Изберете дейност в таблицата, за да я видите на картата.</p>
+      <p class="hint">Натиснете заглавие на колона за сортиране или иконата до него за филтър по една колона.</p>
+      <div class="tablewrap"><table id="activityTable" aria-labelledby="at"><thead></thead><tbody></tbody><tfoot></tfoot></table></div>
+      <p class="note">* Поради малкия обем на извадката стойността не е достатъчно точна (в скоби в оригиналната таблица на НСИ).</p>
+    </section>
   </section>
 
-  <section class="panel" aria-labelledby="tt">
+  <section class="panel" id="rankingPanel" aria-labelledby="tt">
     <h2 id="tt">Класация</h2>
     <p class="sub" id="tsub"></p>
-    <div class="tablewrap"><table><thead id="thead"></thead><tbody id="rows"></tbody></table></div>
+    <p class="hint">Натиснете заглавие на колона за сортиране или иконата до него за филтър по една колона.</p>
+    <div class="tablewrap"><table id="mapRanking" aria-labelledby="tt"><thead></thead><tbody></tbody><tfoot></tfoot></table></div>
     <p class="note" id="tnote"></p>
   </section>
 
-  <section class="panel" aria-labelledby="at">
-    <h2 id="at">Заети лица по икономически дейности и пол, Q3 2026</h2>
-    <p class="sub">Национално ниво, хиляди (НСИ). Разбивка по области или по професии няма. От Q1 2026 дейностите са по КИД-2025.</p>
-    <div class="tablewrap"><table><thead><tr><th>Икономическа дейност</th><th>Общо</th><th class="num">Общо, хил.</th><th class="num">Мъже</th><th class="num">Жени</th></tr></thead><tbody id="act"></tbody></table></div>
-    <p class="note">* Поради малкия обем на извадката стойността не е достатъчно точна (в скоби в оригиналната таблица на НСИ).</p>
-  </section>
-
-  <footer><p>Стойностите с етикет „ДЕМО“ са измислени за илюстрация и не са статистика; на картата са с пунктиран контур, където са смесени с реални. Данни от jobs.bg не са използвани: сайтът не беше достъпен за извличане, а и показва обяви по градове, не заети по професии. Източници: НСИ, отворени данни: коефициенти на заетост (15+), коефициенти на заетост 15–64 г. и заети лица по пол, статистически райони и области (файлове LFS_Q, до Q2 2026), както и таблицата за заетите по икономически дейности за Q3 2026. Резултатите за областите съвпадат с <a href="https://registri.bg/bg/statistics/labour/employment/">registri.bg</a>, който препубликува данните на НСИ. Пресъобщения на НСИ: <a href="https://www.nsi.bg/press-release/osnovni-rezultati-ot-nablyudenieto-na-rabotnata-sila-9118">Q2 2026</a> и <a href="https://www.nsi.bg/press-release/osnovni-rezultati-ot-nablyudenieto-na-rabotnata-sila-9214">Q3 2026</a>. Агенция по заетостта: <a href="https://www.az.government.bg/bg/news/view/stabilni-niva-na-bezrabotica-prez-april-4226/">безработица, април 2026</a>; стойностите за шестте области са от <a href="https://business.dir.bg/ikonomika/bezrabotitsata-v-8-oblasti-po-niska-ot-srednata-za-stranata">анализа на АЗ за април, цитиран от БНР</a>. Равнището на АЗ е делът на регистрираните безработни от икономически активното население 15–64 г. по Преброяване 2021 и не е сравнимо с безработицата по НСИ.</p><p>Тримесечията се сравняват последователно (Q2 спрямо Q1); заетостта има сезонен ход. Граници: Natural Earth (общественото достояние), опростени. Не е официален държавен ресурс.</p></footer>
+  <footer><p>Стойностите с етикет „ДЕМО“ са измислени за илюстрация и не са статистика; на картата са с пунктиран контур, където са смесени с реални. Данни от jobs.bg не са използвани: сайтът не беше достъпен за извличане, а и показва обяви по градове, не заети по професии. Източници: НСИ, отворени данни: коефициенти на заетост (15+), коефициенти на заетост 15–64 г. и заети лица по пол, икономически региони (NUTS 2) и области (файлове LFS_Q, до Q2 2026), както и таблицата за заетите по икономически дейности за Q3 2026. Резултатите за областите съвпадат с <a href="https://registri.bg/bg/statistics/labour/employment/">registri.bg</a>, който препубликува данните на НСИ. Пресъобщения на НСИ: <a href="https://www.nsi.bg/press-release/osnovni-rezultati-ot-nablyudenieto-na-rabotnata-sila-9118">Q2 2026</a> и <a href="https://www.nsi.bg/press-release/osnovni-rezultati-ot-nablyudenieto-na-rabotnata-sila-9214">Q3 2026</a>. Агенция по заетостта: <a href="https://www.az.government.bg/bg/news/view/stabilni-niva-na-bezrabotica-prez-april-4226/">безработица, април 2026</a>; стойностите за шестте области са от <a href="https://business.dir.bg/ikonomika/bezrabotitsata-v-8-oblasti-po-niska-ot-srednata-za-stranata">анализа на АЗ за април, цитиран от БНР</a>. Равнището на АЗ е делът на регистрираните безработни от икономически активното население 15–64 г. по Преброяване 2021 и не е сравнимо с безработицата по НСИ.</p><p>Промяната е спрямо предходното тримесечие. Заетостта има сезонен ход. Граници: Natural Earth (общественото достояние), опростени. Не е официален държавен ресурс.</p></footer>
 
 @section Scripts {
     <script src="~/js/employment.js" asp-append-version="true"></script>

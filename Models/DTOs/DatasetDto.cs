@@ -4,13 +4,12 @@ namespace Hackaton.Models.DTOs
 {
     /// <summary>
     /// Всички данни, от които страницата с картата се нуждае (GET /api/dataset).
-    /// Формата е същият като във файла zaetost-po-profesii.html.
     /// </summary>
     public class DatasetDto
     {
-        /// <summary>код (BG, BG41, BG411) -> тримесечие -> показател (k15|k1564|emp) -> [общо, мъже, жени]</summary>
+        /// <summary>код (BG, BG41, BG411) -> тримесечие -> показател (k15|k1564|emp) -> [общо, мъже, жени], null при липса</summary>
         [JsonPropertyName("d")]
-        public Dictionary<string, Dictionary<string, Dictionary<string, decimal[]>>> D { get; set; } = new();
+        public Dictionary<string, Dictionary<string, Dictionary<string, decimal?[]>>> D { get; set; } = new();
 
         /// <summary>област -> NUTS3 код</summary>
         [JsonPropertyName("code")]
@@ -43,6 +42,9 @@ namespace Hackaton.Models.DTOs
         /// <summary>[име, [общо, звезда], [мъже, звезда], [жени, звезда]]; първият ред е "Общо"</summary>
         [JsonPropertyName("act")]
         public List<object[]> Act { get; set; } = new();
+
+        [JsonPropertyName("activityPeriod")]
+        public string ActivityPeriod { get; } = "2026Q3";
 
         [JsonPropertyName("kpis")]
 

@@ -3,6 +3,7 @@
     ViewData["Title"] = "Класации";
     Layout = "_DemoLayout";
     var q = Model.Query;
+    string QuarterLabel(string p) => p.Length == 6 ? $"Q{p[5]} {p[..4]}" : p;
 }
 
 <h1>Класации по области</h1>
@@ -19,7 +20,7 @@
                 <option value="Profession" selected="@(q.Kind == RankingKind.Profession)">Дял по професия (ДЕМО)</option>
             </select>
         </div>
-        <div>
+        <div data-ranking-kinds="Employment">
             <label for="indicator">Показател (заетост)</label>
             <select id="indicator" name="indicator">
                 <option value="EmpRate15to64" selected="@(q.Indicator == Indicator.EmpRate15to64)">Заетост 15–64 г.</option>
@@ -27,7 +28,7 @@
                 <option value="EmployedThousands" selected="@(q.Indicator == Indicator.EmployedThousands)">Заети, хил.</option>
             </select>
         </div>
-        <div>
+        <div data-ranking-kinds="Employment">
             <label for="sex">Пол</label>
             <select id="sex" name="sex">
                 <option value="Total" selected="@(q.Sex == Sex.Total)">Общо</option>
@@ -35,14 +36,16 @@
                 <option value="Women" selected="@(q.Sex == Sex.Women)">Жени</option>
             </select>
         </div>
-        <div>
-            <label for="period">Тримесечие</label>
+        <div data-ranking-kinds="Employment Profession">
+            <label for="period">Тримесечие на данните за заетост</label>
             <select id="period" name="period">
-                <option value="2026Q1" selected="@(q.Period == "2026Q1")">Q1 2026</option>
-                <option value="2026Q2" selected="@(q.Period == "2026Q2")">Q2 2026</option>
+                @foreach (var p in Model.Periods)
+                {
+                    <option value="@p" selected="@(q.Period == p)">@QuarterLabel(p)</option>
+                }
             </select>
         </div>
-        <div class="wide">
+        <div class="wide" data-ranking-kinds="Profession">
             <label for="professionId">Професия (за ДЕМО класация)</label>
             <select id="professionId" name="professionId">
                 @foreach (var p in Model.Professions)
@@ -64,3 +67,7 @@
         <partial name="_RankingTable" model="Model.Table" />
     </div>
 </section>
+
+@section Scripts {
+    <script src="~/js/ranking-page.js" asp-append-version="true"></script>
+}

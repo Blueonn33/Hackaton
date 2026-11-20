@@ -43,5 +43,6 @@ namespace Hackaton.Models
         public RankingQuery Query { get; init; } = new();
         public RankingViewModel Table { get; init; } = new();
         public List<Profession> Professions { get; init; } = new();
+        public List<string> Periods { get; init; } = new();
     }
 }

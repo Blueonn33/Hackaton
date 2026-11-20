@@ -64,3 +64,37 @@ table.mini{min-width:0;font-size:.85rem;margin:8px 0}table.mini th{font-weight:6
 .topnav a:hover,.topnav a:focus-visible{border-bottom-color:var(--hi)}
 .btn-go{font:inherit;color:var(--surface);background:var(--hi);border:0;border-radius:6px;padding:8px 18px;cursor:pointer}
 .btn-go:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+
+/* Data-aware controls, NUTS 2/national silhouettes and ranking interactions. */
+[hidden]{display:none!important}
+.d:hover,.d.hovered{stroke:var(--ink);stroke-width:2;filter:brightness(1.13)}
+.d.on{stroke:var(--mark);stroke-width:3}
+.map-outline{fill:none;stroke:var(--mark);stroke-width:3;stroke-linejoin:round;pointer-events:none;vector-effect:non-scaling-stroke}
+.activity-data{border-top:1px solid var(--line);margin-top:18px;padding-top:10px}
+.activity-name{font-weight:600;overflow-wrap:anywhere}
+.controls select{min-width:0}
+.ranking-head{display:flex;align-items:center;gap:4px;white-space:normal}
+th.num .ranking-head{justify-content:flex-end}
+.ranking-sort,.ranking-filter-button,.ranking-toolbar button{font:inherit;color:inherit;background:none;border:1px solid transparent;border-radius:4px;cursor:pointer}
+.ranking-sort{text-align:inherit;padding:4px 2px;font-weight:inherit}
+.ranking-sort:hover,.ranking-sort:focus-visible{color:var(--hi);text-decoration:underline;text-underline-offset:3px}
+.sort-arrow{white-space:nowrap;color:var(--hi)}
+.ranking-filter-button{flex:none;display:inline-grid;place-items:center;width:29px;height:29px;padding:4px}
+.ranking-filter-button:hover,.ranking-filter-button.active,.ranking-filter-button[aria-expanded=true]{color:var(--hi);background:var(--lo);border-color:var(--line)}
+.ranking-filter-button svg{width:14px;height:14px}
+.ranking-toolbar button:focus-visible,.ranking-sort:focus-visible,.ranking-filter-button:focus-visible{outline:2px solid var(--hi);outline-offset:2px}
+.ranking-filter{display:flex;gap:8px;align-items:end;flex-wrap:wrap;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:10px;margin:8px 0}
+.ranking-filter strong{flex:1 1 100%;font-size:.9rem}
+.ranking-field{max-width:100%}
+.ranking-filter label{margin:0 0 3px}
+.ranking-filter select{padding:6px 8px}
+.ranking-filter input{display:block;font:inherit;color:var(--ink);background:var(--surface);padding:6px 8px;border:1px solid var(--line);border-radius:4px;width:9rem}
+.ranking-filter input[type=search]{width:min(16rem,65vw)}
+.ranking-toolbar button{border-color:var(--line);padding:4px 8px;color:var(--hi)}
+.ranking-toolbar button:hover{background:var(--surface);text-decoration:underline}
+.ranking-toolbar .hint{margin-bottom:8px}
+.ranking-empty{color:var(--muted)}
+.wrap-text,table.mini th.wrap-text{white-space:normal;overflow-wrap:anywhere}
+.cell .num{font-variant-numeric:tabular-nums;white-space:nowrap}
+#activityTable .wrap-text{width:58%}
+#activityTable td.num{white-space:nowrap}

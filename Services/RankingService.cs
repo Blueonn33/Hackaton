@@ -96,9 +96,9 @@ namespace Hackaton.Services
 
             var rows = shares.Select((s, i) =>
             {
-                var emp = employed.GetValueOrDefault(s.RegionId);
+                decimal? emp = employed.TryGetValue(s.RegionId, out var value) ? value : null;
                 // дял% * хил. заети * 10 = души; заобляме до стотици
-                var persons = Math.Round(s.Share * emp / 10) * 100;
+                decimal? persons = emp.HasValue ? Math.Round(s.Share * emp.Value / 10, MidpointRounding.AwayFromZero) * 100 : null;
                 return new RankingRow(i + 1, s.Name, s.Share, s.IsDemo, persons, emp);
             }).ToList();
 
@@ -122,6 +122,16 @@ namespace Hackaton.Services
 
         public Task<List<Profession>> GetProfessionsAsync() =>
             _db.Professions.AsNoTracking().OrderBy(p => p.Id).ToListAsync();
+
+        public async Task<List<string>> GetDistrictPeriodsAsync()
+        {
+            var periods = await _db.EmploymentValues.AsNoTracking()
+                .Where(v => v.RegionId != null)
+                .Select(v => v.Period)
+                .Distinct()
+                .ToListAsync();
+            return periods.OrderByDescending(p => p, StringComparer.Ordinal).ToList();
+        }
 
         private static string IndicatorName(Indicator i) => i switch
         {

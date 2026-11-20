@@ -16,22 +16,30 @@ namespace Hackaton.Controllers
         [HttpGet]
         public async Task<IActionResult> Index([FromQuery] RankingQuery q, [FromQuery] bool partial = false)
         {
+            if (!ModelState.IsValid || !Enum.IsDefined(q.Kind) ||
+                !Enum.IsDefined(q.Indicator) || !Enum.IsDefined(q.Sex))
+                return BadRequest("Невалидни параметри на класацията.");
+
             var professions = await _svc.GetProfessionsAsync();
             var isAjax = partial || Request.Headers.XRequestedWith == "XMLHttpRequest";
 
-            if (q.Kind == RankingKind.Profession && q.ProfessionId is null)
+            if (q.Kind == RankingKind.Profession)
             {
-                if (isAjax || professions.Count == 0)
-                    return BadRequest("professionId е задължително за kind=Profession.");
-                q.ProfessionId = professions[0].Id;
+                q.ProfessionId ??= professions.FirstOrDefault()?.Id;
+                if (!professions.Any(p => p.Id == q.ProfessionId))
+                    return BadRequest("Невалидна професия.");
             }
+
+            var periods = await _svc.GetDistrictPeriodsAsync();
+            if (q.Kind != RankingKind.Unemployment && !periods.Contains(q.Period))
+                return BadRequest("За това тримесечие няма данни по области.");
 
             var table = await _svc.GetAsync(q);
 
             if (isAjax)
                 return PartialView("_RankingTable", table);
 
-            return View(new RankingPageViewModel { Query = q, Table = table, Professions = professions });
+            return View(new RankingPageViewModel { Query = q, Table = table, Professions = professions, Periods = periods });
         }
     }
 }

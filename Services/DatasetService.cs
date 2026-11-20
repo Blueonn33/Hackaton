@@ -10,13 +10,12 @@ namespace Hackaton.Services
         private readonly ApplicationDbContext _db;
         public DatasetService(ApplicationDbContext db) => _db = db;
 
-        public async Task<DatasetDto> GetAsync(string[] periods)
+        public async Task<DatasetDto> GetAsync()
         {
             var dto = new DatasetDto();
 
             // ---- НСИ: заетост по страна / райони / области ----
             var rows = await _db.EmploymentValues.AsNoTracking()
-                .Where(v => periods.Contains(v.Period))
                 .Select(v => new
                 {
                     Code = v.Region != null ? v.Region.MapCode
@@ -36,17 +35,17 @@ namespace Hackaton.Services
 
                 if (!dto.D.TryGetValue(r.Code, out var byPeriod))
                 {
-                    byPeriod = new Dictionary<string, Dictionary<string, decimal[]>>();
+                    byPeriod = new Dictionary<string, Dictionary<string, decimal?[]>>();
                     dto.D[r.Code] = byPeriod;
                 }
                 if (!byPeriod.TryGetValue(r.Period, out var byInd))
                 {
-                    byInd = new Dictionary<string, decimal[]>();
+                    byInd = new Dictionary<string, decimal?[]>();
                     byPeriod[r.Period] = byInd;
                 }
                 if (!byInd.TryGetValue(key, out var arr))
                 {
-                    arr = new decimal[3];
+                    arr = new decimal?[3];
                     byInd[key] = arr;
                 }
                 arr[(int)r.Sex] = r.Value;
@@ -94,7 +93,8 @@ namespace Hackaton.Services
             }
 
             // ---- икономически дейности (Q3) ----
-            var acts = await _db.Activities.AsNoTracking().OrderBy(a => a.Id).ToListAsync();
+            var acts = await _db.Activities.AsNoTracking()
+                .Where(a => a.Period == dto.ActivityPeriod).OrderBy(a => a.Id).ToListAsync();
             foreach (var a in acts)
             {
                 dto.Act.Add(new object[]

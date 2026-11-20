@@ -1,153 +1,451 @@
 (function () {
-"use strict";
-// Данните идват от ASP.NET: /data/map.json (граници) и /api/dataset (база данни).
-function fail(msg) {
-  var i = document.getElementById("info");
-  if (i) i.innerHTML = '<p class="empty">' + msg + '</p>';
-}
+  "use strict";
 
-function boot(MAP, X) {
-var D = X.d, CODE = X.code, RCODE = X.rCode, ACT = X.act, AZ = X.azReal, AZ_NAT = X.azNat,
-    NAMES = X.names, AZA = X.azAll, PS = X.ps;
-var IND={k1564:"Коефициент на заетост, 15–64 г.",k15:"Коефициент на заетост, 15+ г.",emp:"Заети лица, хиляди"};
-var SEXN=["Общо","Мъже","Жени"],PERN={"2026Q1":"Q1 2026","2026Q2":"Q2 2026"};
-var NI="няма информация";
-var N2C={};Object.keys(CODE).forEach(function(k){N2C[k]=CODE[k]});Object.keys(RCODE).forEach(function(k){N2C[k]=RCODE[k]});
-var $=function(i){return document.getElementById(i)};
-var S={ind:"k1564",sex:0,per:"2026Q2",lvl:"obl",sel:null,hov:null};
-function f(n,d){return n.toFixed(d).replace(".",",")}
-function sg(x,d,u){return (x>=0?"+":"−")+f(Math.abs(x),d)+u}
-var DS=Object.keys(MAP.paths),RS=Object.keys(RCODE);
-function pnat(i){var a=0,b=0;DS.forEach(function(d){var e=D[CODE[d]]["2026Q2"].emp[0];a+=e*PS[d][i];b+=e});return a/b}
-function isDemo(e){return isProf()||(isAz()&&AZ[e]===undefined)}
-var TAG='<span class="tag">ДЕМО</span>';
-function isAz(){return S.ind==="az"}
-function isProf(){return typeof S.ind==="number"}
-function isNsi(){return !isAz()&&!isProf()}
-function lv(){return isNsi()?S.lvl:"obl"}
-function ent(d){return lv()==="reg"?MAP.membership[d]:d}
-function ents(){return lv()==="reg"?RS:DS}
-function gv(e,ind,sex,per){return D[N2C[e]||e][per][ind][sex]}
-function val(e){if(isAz())return AZA[e];if(isProf())return PS[e][S.ind];return gv(e,S.ind,S.sex,S.per)}
-function fv(v){return S.ind==="emp"?f(v,1)+" хил.":f(v,isAz()?2:1)+"%"}
-function dom(){var v=ents().map(val).filter(function(x){return x!==null});return v.length?[Math.min.apply(null,v),Math.max.apply(null,v)]:null}
-function rankOf(e){var a=ents().filter(function(x){return val(x)!==null}).sort(function(a,b){return val(b)-val(a)});return [a.indexOf(e)+1,a.length]}
-function natv(){return D.BG[S.per][S.ind][S.sex]}
-function build(){
-  var o='<optgroup label="НСИ, Наблюдение на работната сила">';
-  Object.keys(IND).forEach(function(k){o+='<option value="'+k+'">'+IND[k]+'</option>'});
-  o+='</optgroup><optgroup label="Агенция по заетостта"><option value="az">Регистрирана безработица, април 2026 (6 реални + 22 ДЕМО области)</option></optgroup><optgroup label="Дял от заетите по професия (ДЕМО данни)">';
-  NAMES.forEach(function(n,i){o+='<option value="'+i+'">'+n+' (ДЕМО)</option>'});
-  $("metric").innerHTML=o+'</optgroup>';
-  var b="";ACT.slice(1).sort(function(a,c){return c[1][0]-a[1][0]}).forEach(function(r){b+=ar(r)});
-  $("act").innerHTML=ar(ACT[0],1)+b;
+  const $ = id => document.getElementById(id);
+  const indicators = {
+    k1564: "Коефициент на заетост, 15–64 г.",
+    k15: "Коефициент на заетост, 15+ г.",
+    emp: "Заети лица, хиляди"
+  };
+  const sexes = ["Общо", "Мъже", "Жени"];
+  const levels = {
+    obl: "Области (28)",
+    reg: "Икономически региони (6)",
+    nat: "България (национално)"
+  };
+  const country = "България";
+  const fmt = [0, 1, 2].map(d => new Intl.NumberFormat("bg-BG", {
+    minimumFractionDigits: d, maximumFractionDigits: d
+  }));
+  const format = (n, decimals = 1) => Number.isFinite(n) ? fmt[decimals].format(n) : "—";
+  const signed = (n, unit) => Number.isFinite(n) ? (n < 0 ? "−" : "+") + format(Math.abs(n)) + unit : "—";
+  const quarter = p => p ? `Q${p[5]} ${p.slice(0, 4)}` : "—";
+  const previous = p => !p ? null : p[5] === "1" ? (+p.slice(0, 4) - 1) + "Q4" : p.slice(0, 5) + (p[5] - 1);
+  const esc = value => String(value).replace(/[&<>"']/g, c => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+  }[c]));
+  const demo = '<span class="tag">ДЕМО</span>';
+  const opt = (value, label) => `<option value="${esc(value)}">${esc(label)}</option>`;
+  const header = (key, label, type = "text", direction = "asc") =>
+    `<th scope="col" data-column="${key}" data-type="${type}" data-direction="${direction}"${type === "number" ? ' class="num"' : ""}>${esc(label)}</th>`;
+  const numCell = (value, label, active) =>
+    `<td class="num${active ? " hl" : ""}" data-value="${Number.isFinite(value) ? value : ""}">${label}</td>`;
+  const rowButton = (label, key, selected) =>
+    `<button type="button" data-select="${esc(key)}" aria-pressed="${selected}">${esc(label)}</button>`;
 
-}
-var AMX=0;
-function ar(r,t){if(!AMX)AMX=Math.max.apply(null,ACT.slice(1).map(function(x){return x[1][0]}));
-  var c=function(v){return '<td class="num">'+f(v[0],1)+(v[1]?'*':'')+'</td>'};
-  return '<tr'+(t?' class="nat"':'')+'><td>'+r[0]+'</td><td style="min-width:120px"><span class="bar"><i style="width:'+(t?100:r[1][0]/AMX*100)+'%"></i></span></td>'+c(r[1])+c(r[2])+c(r[3])+'</tr>';
-}
-function syncCtl(){var n=isNsi();$("sex").disabled=!n;$("per").disabled=!n;$("lvl").disabled=!n}
-$("metric").onchange=function(){var v=this.value;S.ind=(v==="az"||v==="emp"||v==="k15"||v==="k1564")?v:+v;S.sel=null;S.hov=null;syncCtl();render()};
-$("sex").onchange=function(){S.sex=+this.value;render()};
-$("per").onchange=function(){S.per=this.value;render()};
-$("lvl").onchange=function(){S.lvl=this.value;S.sel=null;S.hov=null;render()};
-function drawMap(){
-  var d=dom(),h="";
-  DS.forEach(function(n){
-    var e=ent(n),v=val(e),st="",cl="d";
-    if(v===null){cl+=" nd"}else{var t=d[1]>d[0]?(v-d[0])/(d[1]-d[0]):0;st=' style="fill:color-mix(in srgb,var(--hi) '+Math.round(t*100)+'%,var(--lo))"'}
-    if(S.sel===e)cl+=" on";
-    if(isDemo(e))cl+=" demo";
-    h+='<path class="'+cl+'" data-d="'+n+'" tabindex="0" role="button" aria-label="'+e+': '+(v===null?NI:fv(v))+'"'+st+' d="'+MAP.paths[n]+'"><title>'+n+(lv()==="reg"?' ('+e+' район)':'')+'</title></path>';
-  });
-  $("map").innerHTML=h;
+  function boot(mapData, data) {
+    const { d, code, rCode, azAll, azReal, azNat, names, ps, act, activityPeriod } = data;
+    const districts = Object.keys(mapData.paths);
+    const regions = Object.keys(rCode);
+    const codes = { ...code, ...rCode, [country]: "BG" };
+    const s = { ind: "k1564", sex: 0, activitySex: 0, per: "2026Q2", lvl: "obl", activity: 0, sel: null, hover: null, focus: null };
+    const tableStates = { employment: {}, az: {}, profession: {}, activity: {} };
+    const map = $("map");
+    const ranking = $("mapRanking");
+    const activityTable = $("activityTable");
+    const rankingControls = window.RankingTable.connect(ranking);
+    const activityControls = window.RankingTable.connect(activityTable);
+    let shapes = [];
 
-  $("legend").style.display=d?"flex":"none";
-  if(d){$("lmin").textContent=fv(d[0]);$("lmax").textContent=fv(d[1])}
-}
-function mini(e){
-  var c=N2C[e],p=S.per,h='<table class="mini"><thead><tr><th></th><th class="num">Общо</th><th class="num">Мъже</th><th class="num">Жени</th></tr></thead><tbody>';
-  [["k15","Заетост 15+ г."],["k1564","Заетост 15–64 г."],["emp","Заети, хил."]].forEach(function(r){
-    h+='<tr><th>'+r[1]+'</th>'+D[c][p][r[0]].map(function(x,i){return '<td class="num'+(r[0]===S.ind&&i===S.sex?' hl':'')+'">'+f(x,1)+(r[0]==="emp"?'':'%')+'</td>'}).join('')+'</tr>'});
-  return h+'</tbody></table>';
-}
-function drawInfo(){
-  var n=S.hov||S.sel,el=$("info");
-  if(!n){
-    var t;
-    if(isNsi()){var nv=natv();t='Цветът показва: '+IND[S.ind].toLowerCase()+', '+SEXN[S.sex].toLowerCase()+', '+PERN[S.per]+'. '+(S.ind==="emp"?'Общо за страната: ':'Средно за страната: ')+fv(nv)+'.'+(lv()==="reg"?' Картата е оцветена по статистически райони (NUTS 2).':'')}
-    else if(isAz())t="Цветът показва регистрираната безработица, април 2026. Пунктираните области са ДЕМО. Средно за страната: "+f(AZ_NAT,2)+"%.";
-    else t="Цветът показва дела на избраната професия сред заетите (ДЕМО данни). Средно за страната (претеглено): "+f(pnat(S.ind),1)+"%.";
-    el.innerHTML='<p class="empty">Посочете област на картата. '+t+'</p>';return}
-  var isR=RCODE[n]!==undefined,h='<h3>'+(isR?n+' район':n)+'</h3><p class="m">'+(isR?'Статистически район (NUTS 2), '+DS.filter(function(d){return MAP.membership[d]===n}).length+' области':MAP.membership[n]+' район')+'</p>';
-  if(isProf()){var pv=PS[n][S.ind],pk=rankOf(n),pn=pnat(S.ind),emp=D[CODE[n]]["2026Q2"].emp[0];
-    h+='<div class="big">'+f(pv,1)+'% '+TAG+'</div><p>'+NAMES[S.ind]+': дял от заетите, '+pk[0]+'-о място от '+pk[1]+' ('+sg(pv-pn,1,' пр. п.')+' спрямо средното за страната: '+f(pn,1)+'%).</p><p>≈ '+String(Math.round(pv*emp/10)*100).replace(/\B(?=(\d{3})+(?!\d))/g,'\u00a0')+' души от '+f(emp,1)+' хил. заети (реален брой, Q2 2026).</p><p class="low">ДЕМО: измислена стойност за илюстрация. Не е статистика.</p>';
-    h+='<table class="mini"><tbody>'+NAMES.map(function(nm,i){return '<tr><th style="white-space:normal">'+nm+'</th><td class="num'+(i===S.ind?' hl':'')+'">'+f(PS[n][i],1)+'%</td></tr>'}).join('')+'</tbody></table>';
-    el.innerHTML=h;return}
-  if(isAz()){var rk3=rankOf(n),dm=AZ[n]===undefined;
-    el.innerHTML=h+'<div class="big">'+f(AZA[n],2)+'%'+(dm?' '+TAG:'')+'</div><p>регистрирана безработица, април 2026 (АЗ), '+rk3[0]+'-о място от '+rk3[1]+'. Средно за страната: '+f(AZ_NAT,2)+'%.</p>'+(dm?'<p class="low">ДЕМО: за тази област няма намерена публикувана стойност; числото е измислено.</p>':'<p class="m">Реална стойност (Агенция по заетостта).</p>');return}
-  var v=val(n),rk=rankOf(n),nv=natv(),rate=S.ind!=="emp";
-  h+='<div class="big">'+fv(v)+'</div><p>'+IND[S.ind].toLowerCase()+', '+SEXN[S.sex].toLowerCase()+', '+PERN[S.per]+'. '+rk[0]+'-о място от '+rk[1]+(rate?' ('+sg(v-nv,1,' пр. п.')+' спрямо страната)':' ('+f(v/nv*100,1)+'% от заетите в страната, изчислено)')+'.</p>';
-  if(S.per==="2026Q2"){var pv=gv(n,S.ind,S.sex,"2026Q1");h+='<p class="m">Спрямо Q1 2026: '+sg(v-pv,1,rate?' пр. п.':' хил.')+'</p>'}
-  h+=mini(n);
-  if(isR){var ob=DS.filter(function(d){return MAP.membership[d]===n}).sort(function(a,b){return gv(b,S.ind,S.sex,S.per)-gv(a,S.ind,S.sex,S.per)});
-    h+='<p class="m" style="margin-top:10px">Области в района ('+IND[S.ind].toLowerCase()+', '+SEXN[S.sex].toLowerCase()+'):</p><ul class="list">'+ob.map(function(d){var x=gv(d,S.ind,S.sex,S.per);return '<li><span>'+d+'</span><span>'+f(x,1)+(rate?'%':' хил.')+'</span></li>'}).join('')+'</ul>'}
-  el.innerHTML=h;
-}
-function drawTable(){
-  var h="",hd,m=S.ind;
-  if(isProf()){
-    var L2=DS.slice().sort(function(a,b){return PS[b][m]-PS[a][m]}),mx2=Math.max.apply(null,L2.map(function(d){return PS[d][m]})),tc=0;
-    $("tsub").innerHTML=NAMES[m]+": дял от заетите по области. ДЕМО ДАННИ.";
-    hd='<tr><th class="num">№</th><th>Област</th><th>Дял от заетите (ДЕМО)</th><th class="num">≈ души (ДЕМО)</th><th class="num">Заети, хил. (реално, Q2 2026)</th></tr>';
-    L2.forEach(function(n,k){var e=D[CODE[n]]["2026Q2"].emp[0],c=Math.round(PS[n][m]*e/10)*100;tc+=c;
-      h+='<tr class="demorow'+(S.sel===n?' sel':'')+'"><td class="num">'+(k+1)+'</td><td><button data-d="'+n+'">'+n+'</button></td><td><div class="cell"><span class="num" style="min-width:3.4em;text-align:right">'+f(PS[n][m],1)+'%</span><span class="bar"><i style="width:'+PS[n][m]/mx2*100+'%"></i></span></div></td><td class="num">'+String(c).replace(/\B(?=(\d{3})+(?!\d))/g," ")+'</td><td class="num">'+f(e,1)+'</td></tr>'});
-    h+='<tr class="nat"><td></td><td>България (претеглено, ДЕМО)</td><td><div class="cell"><span class="num" style="min-width:3.4em;text-align:right">'+f(pnat(m),1)+'%</span><span class="bar"><i style="width:'+pnat(m)/mx2*100+'%"></i></span></div></td><td class="num">'+String(tc).replace(/\B(?=(\d{3})+(?!\d))/g," ")+'</td><td class="num">'+f(D.BG["2026Q2"].emp[0],1)+'</td></tr>';
-    $("tnote").textContent="ДЕМО: дяловете по професии са измислени. Само колоната с брой заети е реална (НСИ).";
-  }else if(isAz()){
-    $("tsub").textContent="Регистрирана безработица по области, април 2026. Средно за страната: "+f(AZ_NAT,2)+"%. 6 реални стойности (Агенция по заетостта) и 22 ДЕМО.";
-    hd='<tr><th class="num">№</th><th>Област</th><th class="num">Регистрирана безработица</th><th>Вид</th></tr>';
-    DS.slice().sort(function(a,b){return AZA[b]-AZA[a]}).forEach(function(n,k){var dm=AZ[n]===undefined;
-      h+='<tr class="'+(dm?'demorow':'')+(S.sel===n?' sel':'')+'"><td class="num">'+(k+1)+'</td><td><button data-d="'+n+'">'+n+'</button></td><td class="num">'+f(AZA[n],2)+'%</td><td>'+(dm?'<span class="tag" style="margin:0">ДЕМО</span>':'реално (АЗ)')+'</td></tr>'});
-    $("tnote").textContent="ДЕМО стойностите са измислени и показват само как би изглеждала пълна таблица.";
-  }else{
-    var rate=m!=="emp",L=ents().slice().sort(function(a,b){return val(b)-val(a)}),nat=natv(),mx=Math.max.apply(null,L.map(val)),u=rate?" пр. п.":" хил.";
-    $("tsub").textContent=IND[m]+", "+SEXN[S.sex].toLowerCase()+", "+PERN[S.per]+", "+(lv()==="reg"?"по статистически райони":"по области")+"."+(rate?" Оранжевата черта е средното за страната ("+f(nat,1)+"%).":" Общо за страната: "+f(nat,1)+" хил.");
-    hd='<tr><th class="num">№</th><th>'+(lv()==="reg"?"Район":"Област")+'</th><th>'+SEXN[S.sex]+'</th>'+SEXN.map(function(s,i){return '<th class="num">'+s+'</th>'}).join('')+'<th class="num">Q2 спрямо Q1</th></tr>';
-    var cell=function(e,i){var x=gv(e,m,i,S.per);return '<td class="num'+(i===S.sex?' hl':'')+'">'+f(x,1)+(rate?'%':'')+'</td>'};
-    var dl=function(e){return '<td class="num">'+sg(gv(e,m,S.sex,"2026Q2")-gv(e,m,S.sex,"2026Q1"),1,u)+'</td>'};
-    L.forEach(function(n,k){var v=val(n);
-      h+='<tr'+(S.sel===n?' class="sel"':'')+'><td class="num">'+(k+1)+'</td><td><button data-d="'+n+'">'+n+'</button></td><td><div class="cell"><span class="num" style="min-width:3.6em;text-align:right">'+f(v,1)+(rate?'%':'')+'</span><span class="bar"><i style="width:'+(rate?v:v/mx*100)+'%"></i>'+(rate?'<u style="left:'+nat+'%"></u>':'')+'</span></div></td>'+cell(n,0)+cell(n,1)+cell(n,2)+dl(n)+'</tr>'});
-    h+='<tr class="nat"><td></td><td>България</td><td></td>'+cell("BG",0)+cell("BG",1)+cell("BG",2)+dl("BG")+'</tr>';
-    $("tnote").textContent="Данни на НСИ, Наблюдение на работната сила. Колоната „Q2 спрямо Q1“ е промяна за избрания пол"+(rate?" в процентни пунктове":" в хиляди")+"; тримесечията не са сезонно изчистени от показаните данни.";
+    const isActivity = () => s.ind === "activity";
+    const isAz = () => s.ind === "az";
+    const isProfession = () => s.ind.startsWith("prof:");
+    const profIndex = () => Number(s.ind.slice(5));
+    const isEmployment = () => Object.hasOwn(indicators, s.ind);
+    const areaLevel = () => isActivity() ? "nat" : isEmployment() ? s.lvl : "obl";
+    const scope = level => level === "nat" ? [country] : level === "reg" ? regions : districts;
+    const activeSex = () => isActivity() ? s.activitySex : s.sex;
+    const nsi = (entity, ind, sex, period) => d[codes[entity]]?.[period]?.[ind]?.[sex] ?? null;
+    const professionPopulation = name => nsi(name, "emp", 0, "2026Q2");
+    const estimatePersons = (share, employed) => Number.isFinite(share) && Number.isFinite(employed)
+      ? Math.round(share * employed / 10) * 100 : null;
+    const activityValue = (i, sex = activeSex()) => act[i]?.[sex + 1]?.[0] ?? null;
+    const activityFlag = (i, sex = activeSex()) => Boolean(act[i]?.[sex + 1]?.[1]);
+    const delta = name => {
+      const current = nsi(name, s.ind, s.sex, s.per);
+      const before = nsi(name, s.ind, s.sex, previous(s.per));
+      return current === null || before === null ? null : current - before;
+    };
+    const value = name => {
+      if (isActivity()) return activityValue(s.activity);
+      if (isAz()) return azAll[name] ?? null;
+      if (isProfession()) return ps[name]?.[profIndex()] ?? null;
+      return nsi(name, s.ind, s.sex, s.per);
+    };
+    const valueFmt = n => n === null ? "Няма данни" :
+      format(n, isAz() ? 2 : 1) + (isActivity() || s.ind === "emp" ? " хил." : "%");
+    const isDemo = name => isProfession() || (isAz() && Object.hasOwn(azAll, name) && !Object.hasOwn(azReal, name));
+    const ranked = () => scope(areaLevel()).slice().sort((a, b) => {
+      const x = value(a), y = value(b);
+      if (x === null || y === null) return x === y ? 0 : x === null ? 1 : -1;
+      return isAz() ? x - y : y - x;
+    });
+    const membership = name => districts.filter(district => mapData.membership[district] === name);
+    const nameLabel = name => areaLevel() === "reg" ? name + " икономически регион" : name;
+    const profNational = () => {
+      let weighted = 0, population = 0;
+      districts.forEach(name => {
+        const employed = professionPopulation(name), share = value(name);
+        if (employed !== null && share !== null) {
+          weighted += employed * share;
+          population += employed;
+        }
+      });
+      return population ? weighted / population : null;
+    };
+
+    // Availability is calculated at the dataset's true geographical level.
+    const available = Object.fromEntries(Object.keys(indicators).map(ind => [ind,
+      Object.fromEntries(Object.keys(levels).map(level => {
+        const periods = new Map();
+        scope(level).forEach(name => Object.entries(d[codes[name]] || {}).forEach(([p, series]) => {
+          series[ind]?.forEach((v, sex) => {
+            if (v === null) return;
+            if (!periods.has(p)) periods.set(p, new Set());
+            periods.get(p).add(sex);
+          });
+        }));
+        return [level, periods];
+      }))
+    ]));
+
+    function options(id, values, selected, show = values.length > 1) {
+      const field = $(id);
+      const html = values.map(([key, label]) => opt(key, label)).join("");
+      if (field.dataset.options !== html) {
+        field.innerHTML = html;
+        field.dataset.options = html;
+      }
+      field.value = selected ?? "";
+      field.disabled = !show;
+      $(id + "Control").hidden = !show;
+    }
+
+    function syncControls() {
+      options("activity", isActivity() ? act.map((a, i) => [i, a[0]]) : [], s.activity);
+      if (isActivity()) {
+        options("sex", sexes.map((label, i) => [i, label]), s.activitySex);
+        options("per", [], null);
+        options("lvl", [], null);
+        return;
+      }
+      if (!isEmployment()) {
+        ["sex", "per", "lvl"].forEach(id => options(id, [], null));
+        return;
+      }
+      const validLevels = Object.keys(levels).filter(level => available[s.ind][level].size);
+      if (!validLevels.includes(s.lvl)) s.lvl = validLevels[0] ?? "obl";
+      const periods = available[s.ind][s.lvl];
+      const validPeriods = [...periods.keys()].sort().reverse();
+      if (!periods.has(s.per)) {
+        s.per = s.per ? validPeriods.find(p => p < s.per) ?? validPeriods[0] : validPeriods[0];
+      }
+      const validSexes = [...(periods.get(s.per) ?? [])].sort((a, b) => a - b);
+      if (!validSexes.includes(s.sex)) s.sex = validSexes[0] ?? 0;
+      options("lvl", validLevels.map(l => [l, levels[l]]), s.lvl);
+      options("per", validPeriods.map(p => [p, quarter(p)]), s.per);
+      options("sex", validSexes.map(i => [i, sexes[i]]), s.sex);
+    }
+
+    function drawMap() {
+      const level = areaLevel(), entities = scope(level);
+      const vals = entities.map(value).filter(Number.isFinite);
+      const min = vals.length ? Math.min(...vals) : null, max = vals.length ? Math.max(...vals) : null;
+      const geometry = level === "nat" ? { [country]: mapData.country } : level === "reg" ? mapData.regions : mapData.paths;
+      map.setAttribute("aria-label", level === "nat" ? "Карта на България, национални данни" :
+        level === "reg" ? "Карта по икономически региони" : "Карта по области");
+      map.innerHTML = entities.map(name => {
+        const v = value(name);
+        const share = min === max ? 65 : Math.round((v - min) / (max - min) * 100);
+        const fill = v === null ? "" : ` style="fill:color-mix(in srgb,var(--hi) ${share}%,var(--lo))"`;
+        const label = nameLabel(name) + ": " + valueFmt(v) + (isDemo(name) ? " (ДЕМО)" : "");
+        return `<path class="d${v === null ? " nd" : ""}${isDemo(name) ? " demo" : ""}"
+          data-entity="${esc(name)}" tabindex="0" role="button" aria-pressed="false"
+          aria-label="${esc(label)}"${fill} d="${esc(geometry[name])}"><title>${esc(label)}</title></path>`;
+      }).join("") + '<path id="mapOutline" class="map-outline" aria-hidden="true" hidden></path>';
+      shapes = Array.from(map.querySelectorAll("[data-entity]"));
+      $("legend").hidden = !vals.length || min === max || level === "nat";
+      $("lmin").textContent = valueFmt(min);
+      $("lmax").textContent = valueFmt(max);
+    }
+
+    function paintInteraction() {
+      const highlight = s.hover || s.focus;
+      let activeShape;
+      shapes.forEach(path => {
+        const name = path.dataset.entity;
+        path.classList.toggle("on", s.sel === name);
+        path.classList.toggle("hovered", highlight === name);
+        path.setAttribute("aria-pressed", String(s.sel === name));
+        if (name === (highlight || s.sel)) activeShape = path;
+      });
+      const outline = $("mapOutline");
+      outline.toggleAttribute("hidden", !activeShape);
+      if (activeShape) outline.setAttribute("d", activeShape.getAttribute("d"));
+      drawInfo();
+    }
+
+    function miniEmployment(name) {
+      const rows = [["k15", "Заетост 15+ г."], ["k1564", "Заетост 15–64 г."], ["emp", "Заети, хил."]];
+      return '<table class="mini"><thead><tr><th scope="col">Показател</th>' +
+        sexes.map(label => `<th scope="col" class="num">${label}</th>`).join("") + "</tr></thead><tbody>" +
+        rows.map(([ind, label]) => `<tr><th scope="row">${label}</th>` +
+          sexes.map((_, i) => {
+            const v = nsi(name, ind, i, s.per);
+            return numCell(v, format(v) + (v !== null && ind !== "emp" ? "%" : ""), s.ind === ind && s.sex === i);
+          }).join("") + "</tr>").join("") + "</tbody></table>";
+    }
+
+    function drawActivityInfo() {
+      const i = s.activity, v = activityValue(i), total = activityValue(0);
+      const share = total > 0 && v !== null ? v / total * 100 : null;
+      $("info").innerHTML = `<h3>България</h3>
+        <p class="m">Национални данни · ${quarter(activityPeriod)} · НСИ, КИД-2025</p>
+        <p class="activity-name">${esc(act[i]?.[0] ?? "Няма данни")}</p>
+        <div class="big">${valueFmt(v)}${activityFlag(i) ? "*" : ""}</div>
+        <p>${sexes[s.activitySex]} · ${i === 0 ? "всички икономически дейности" : "от избраната икономическа дейност"}</p>` +
+        (i > 0 && share !== null ? `<p class="m">${format(share)}% от всички заети за избрания пол.</p>` : "") +
+        (activityFlag(i) ? '<p class="low">* Стойността е с ниска точност поради малка извадка.</p>' : "") +
+        '<p class="m">Няма разбивка по области или икономически региони.</p>';
+    }
+
+    function drawInfo() {
+      if (isActivity()) { drawActivityInfo(); return; }
+      const el = $("info");
+      const level = areaLevel(), name = s.hover || s.focus || s.sel || (level === "nat" ? country : null);
+      const national = isAz() ? azNat : isProfession() ? profNational() : nsi(country, s.ind, s.sex, s.per);
+      if (!name) {
+        const hint = level === "reg" ? "Посочете икономически регион на картата." : "Посочете област на картата.";
+        const label = isAz() ? "Регистрирана безработица, април 2026. Пунктираните области са ДЕМО." :
+          isProfession() ? "Дял по професия (ДЕМО): " + names[profIndex()] + "." :
+          indicators[s.ind] + " · " + sexes[s.sex] + " · " + quarter(s.per) + ".";
+        el.innerHTML = `<p class="empty">${hint}</p><p>${esc(label)}</p><p class="m">България: ${valueFmt(national)}.</p>`;
+        return;
+      }
+      const v = value(name);
+      const localRank = ranked().filter(e => value(e) !== null);
+      const rank = localRank.indexOf(name) + 1;
+      const place = rank && level !== "nat" ? ` ${rank}-о място от ${localRank.length}.` : "";
+      const location = level === "reg" ? "NUTS 2 · " + membership(name).length + " области" :
+        level === "obl" ? mapData.membership[name] + " икономически регион" : "Национални данни";
+      let html = `<h3>${esc(nameLabel(name))}</h3><p class="m">${esc(location)}</p>
+        <div class="big">${valueFmt(v)}${isDemo(name) ? " " + demo : ""}</div>`;
+      if (isAz()) {
+        html += `<p>Регистрирана безработица, април 2026.${place} България: ${valueFmt(national)}.</p>` +
+          (isDemo(name) ? '<p class="low">ДЕМО: няма публикувана стойност в набора за тази област.</p>' : '<p class="m">Източник: Агенция по заетостта.</p>');
+      } else if (isProfession()) {
+        const employed = professionPopulation(name);
+        const persons = estimatePersons(v, employed);
+        html += `<p>${esc(names[profIndex()])} · дял от заетите.${place}</p>` +
+          (persons === null ? "" : `<p>≈ ${format(persons, 0)} души (ДЕМО) от ${format(employed)} хил. заети (НСИ, Q2 2026).</p>`) +
+          '<p class="low">ДЕМО: дяловете по професии са измислени за илюстрация.</p>' +
+          '<table class="mini"><tbody>' + names.map((label, i) => {
+            const share = ps[name]?.[i] ?? null;
+            return `<tr><th scope="row" class="wrap-text">${esc(label)}</th>` +
+              numCell(share, share === null ? "—" : format(share) + "%", i === profIndex()) + "</tr>";
+          }).join("") + "</tbody></table>";
+      } else {
+        const rate = s.ind !== "emp", change = delta(name);
+        html += `<p>${esc(indicators[s.ind])} · ${sexes[s.sex]} · ${quarter(s.per)}.${place}</p>`;
+        if (level !== "nat" && v !== null && national !== null) {
+          const comparison = rate ? signed(v - national, " пр. п.") + " спрямо България" :
+            national > 0 ? format(v / national * 100) + "% от заетите в България" : null;
+          if (comparison) html += `<p class="m">${comparison}.</p>`;
+        }
+        if (change !== null) html += `<p class="m">Спрямо ${quarter(previous(s.per))}: ${signed(change, rate ? " пр. п." : " хил.")}</p>`;
+        html += miniEmployment(name);
+        if (level === "reg") {
+          const members = membership(name).sort((a, b) =>
+            (nsi(b, s.ind, s.sex, s.per) ?? -Infinity) - (nsi(a, s.ind, s.sex, s.per) ?? -Infinity));
+          html += '<p class="m">Области в региона:</p><ul class="list">' + members.map(district =>
+            `<li><span>${esc(district)}</span><span>${valueFmt(nsi(district, s.ind, s.sex, s.per))}</span></li>`).join("") + "</ul>";
+        }
+      }
+      el.innerHTML = html;
+    }
+
+    function activityRow(i, total) {
+      const label = act[i][0];
+      return `<tr class="${total ? "nat" : ""}" data-row="${i}"><td class="wrap-text">${rowButton(label, i, s.activity === i)}</td>` +
+        sexes.map((_, sex) => {
+          const v = activityValue(i, sex);
+          return numCell(v, format(v) + (activityFlag(i, sex) ? '<span title="Малка извадка">*</span>' : ""), sex === s.activitySex);
+        }).join("") + "</tr>";
+    }
+
+    function drawActivityTable() {
+      activityTable.dataset.defaultSort = "sex0";
+      activityTable.tHead.innerHTML = "<tr>" + header("name", "Икономическа дейност") +
+        sexes.map((label, i) => header("sex" + i, label + ", хил.", "number", "desc")).join("") + "</tr>";
+      activityTable.tBodies[0].innerHTML = act.slice(1).map((_, i) => activityRow(i + 1, false)).join("");
+      activityTable.tFoot.innerHTML = act.length ? activityRow(0, true) : "";
+      activityControls.refresh(tableStates.activity);
+    }
+
+    function drawRanking() {
+      const level = areaLevel();
+      if (level === "nat") return;
+      const key = isAz() ? "az" : isProfession() ? "profession" : "employment";
+      const list = ranked(), national = isAz() ? azNat : isProfession() ? profNational() : nsi(country, s.ind, s.sex, s.per);
+      const isRate = s.ind !== "emp", hasDelta = isEmployment() && list.some(name => delta(name) !== null);
+      const changeUnit = isRate ? " пр. п." : " хил.";
+      const best = Math.max(0, ...list.map(value).filter(Number.isFinite));
+      const totalEstimate = isProfession()
+        ? list.map(name => estimatePersons(value(name), professionPopulation(name))).filter(Number.isFinite) : [];
+      const nationalMark = isEmployment() && isRate && national !== null && best > 0
+        ? `<u style="left:${Math.min(100, national / best * 100)}%"></u>` : "";
+      function bar(n) {
+        const width = n === null || !best ? 0 : n / best * 100;
+        return `<td data-value="${n ?? ""}"><div class="cell"><span class="num">${n === null ? "—" : valueFmt(n)}</span>
+          <span class="bar" aria-hidden="true"><i style="width:${width}%"></i>${nationalMark}</span></div></td>`;
+      }
+      const valueLabel = isAz() ? "Безработица, %" : isProfession() ? "Дял от заетите (ДЕМО)" : isRate ? "Коефициент, %" : "Заети, хил.";
+      let headings = header("rank", "№", "number") + header("name", level === "reg" ? "Икономически регион" : "Област") +
+        header("value", valueLabel, "number", isAz() ? "asc" : "desc");
+      if (isAz()) headings += header("source", "Източник", "category");
+      else if (isProfession()) headings += header("persons", "≈ души (ДЕМО)", "number", "desc") +
+        header("employment", "Заети, хил. (НСИ)", "number", "desc");
+      else {
+        headings += sexes.map((label, i) => header("sex" + i, label + (isRate ? ", %" : ", хил."), "number", "desc")).join("");
+        if (hasDelta) headings += header("change", quarter(s.per) + " спрямо " + quarter(previous(s.per)), "number", "desc");
+      }
+      $("tsub").textContent = isAz() ? "Регистрирана безработица по области, април 2026." :
+        isProfession() ? names[profIndex()] + " · ДЕМО данни по области." :
+        indicators[s.ind] + " · " + sexes[s.sex] + " · " + quarter(s.per) + "." +
+          (nationalMark ? " Оранжевата черта показва стойността за България (" + valueFmt(national) + ")." : "");
+      $("tnote").textContent = isAz() ? "Реалните стойности са на Агенцията по заетостта. Останалите са ДЕМО." :
+        isProfession() ? "Дяловете и приблизителният брой по професия са ДЕМО. Общият брой заети е от НСИ (Q2 2026)." :
+        "Източник: НСИ, Наблюдение на работната сила." +
+          (hasDelta ? " Промяната за избрания пол е спрямо предходното тримесечие. Данните не са сезонно изгладени." : "");
+      function columns(name, nat) {
+        const v = nat ? national : value(name);
+        if (isAz()) {
+          const source = nat || !isDemo(name) ? "Реално (АЗ)" : "ДЕМО";
+          return bar(v) + `<td data-value="${source}">${isDemo(name) && !nat ? demo : source}</td>`;
+        }
+        if (isProfession()) {
+          const employed = professionPopulation(name);
+          const estimate = nat ? (totalEstimate.length ? totalEstimate.reduce((a, b) => a + b, 0) : null) : estimatePersons(v, employed);
+          return bar(v) + numCell(estimate, format(estimate, 0)) + numCell(employed, format(employed));
+        }
+        return bar(v) + sexes.map((_, i) => {
+          const n = nsi(name, s.ind, i, s.per);
+          return numCell(n, format(n) + (n !== null && isRate ? "%" : ""), i === s.sex);
+        }).join("") + (hasDelta ? numCell(delta(name), signed(delta(name), changeUnit)) : "");
+      }
+      ranking.dataset.defaultSort = "rank";
+      ranking.tHead.innerHTML = "<tr>" + headings + "</tr>";
+      ranking.tBodies[0].innerHTML = list.map((name, i) => {
+        const rank = value(name) === null ? null : i + 1;
+        return `<tr data-row="${esc(name)}" class="${isDemo(name) ? "demorow" : ""}">${numCell(rank, rank ?? "—")}
+          <td>${rowButton(name, name, s.sel === name)}</td>${columns(name, false)}</tr>`;
+      }).join("");
+      ranking.tFoot.innerHTML = `<tr class="nat"><td></td><td>${country}${isProfession() ? " (претеглено, ДЕМО)" : ""}</td>${columns(country, true)}</tr>`;
+      rankingControls.refresh(tableStates[key]);
+    }
+
+    function syncSelectedRows(table, value) {
+      table.querySelectorAll("tr[data-row]").forEach(row => {
+        const selected = row.dataset.row === String(value);
+        row.classList.toggle("sel", selected);
+        row.querySelector("[data-select]").setAttribute("aria-pressed", selected);
+      });
+    }
+
+    function render() {
+      syncControls();
+      const activity = isActivity();
+      $("activityData").hidden = !activity;
+      $("rankingPanel").hidden = areaLevel() === "nat";
+      drawMap();
+      if (activity) {
+        drawActivityTable();
+        syncSelectedRows(activityTable, s.activity);
+      } else if (areaLevel() !== "nat") {
+        drawRanking();
+        syncSelectedRows(ranking, s.sel);
+      }
+      paintInteraction();
+    }
+
+    function resetArea() { s.sel = s.hover = s.focus = null; }
+    function chooseArea(name) {
+      s.sel = s.sel === name ? null : name;
+      s.hover = s.focus = null;
+      syncSelectedRows(ranking, s.sel);
+      paintInteraction();
+    }
+    function chooseActivity(i) {
+      if (!act[i]) return;
+      s.activity = i;
+      $("activity").value = i;
+      syncSelectedRows(activityTable, i);
+      drawMap();
+      paintInteraction();
+    }
+    const entityFrom = target => target?.closest?.("[data-entity]")?.dataset.entity ?? null;
+    map.addEventListener("pointerover", event => {
+      const next = entityFrom(event.target);
+      if (next !== s.hover) { s.hover = next; paintInteraction(); }
+    });
+    map.addEventListener("pointerleave", () => {
+      if (s.hover !== null) { s.hover = null; paintInteraction(); }
+    });
+    map.addEventListener("focusin", event => { s.focus = entityFrom(event.target); paintInteraction(); });
+    map.addEventListener("focusout", () => { s.focus = null; paintInteraction(); });
+    map.addEventListener("click", event => {
+      const name = entityFrom(event.target);
+      if (name) chooseArea(name);
+    });
+    map.addEventListener("keydown", event => {
+      const name = entityFrom(event.target);
+      if (name && (event.key === "Enter" || event.key === " ")) {
+        event.preventDefault();
+        chooseArea(name);
+      }
+    });
+    ranking.addEventListener("click", event => {
+      const button = event.target.closest("[data-select]");
+      if (button) chooseArea(button.dataset.select);
+    });
+    activityTable.addEventListener("click", event => {
+      const button = event.target.closest("[data-select]");
+      if (button) chooseActivity(Number(button.dataset.select));
+    });
+
+    $("metric").innerHTML = '<optgroup label="НСИ · Наблюдение на работната сила">' +
+      Object.entries(indicators).map(([key, label]) => opt(key, label)).join("") +
+      (act.length ? opt("activity", "Заети лица по икономически дейности и пол, " + quarter(activityPeriod)) : "") +
+      '</optgroup><optgroup label="Агенция по заетостта">' +
+      opt("az", "Регистрирана безработица, април 2026 (реални и ДЕМО данни)") +
+      '</optgroup><optgroup label="Дял от заетите по професия (ДЕМО)">' +
+      names.map((name, i) => opt("prof:" + i, name + " (ДЕМО)")).join("") + "</optgroup>";
+    $("metric").disabled = false;
+    $("metric").value = s.ind;
+    $("metric").addEventListener("change", event => { s.ind = event.target.value; resetArea(); render(); });
+    $("lvl").addEventListener("change", event => { s.lvl = event.target.value; resetArea(); render(); });
+    $("per").addEventListener("change", event => { s.per = event.target.value; render(); });
+    $("sex").addEventListener("change", event => {
+      if (isActivity()) s.activitySex = Number(event.target.value);
+      else s.sex = Number(event.target.value);
+      render();
+    });
+    $("activity").addEventListener("change", event => chooseActivity(Number(event.target.value)));
+    $("at").textContent = "Заети лица по икономически дейности и пол, " + quarter(activityPeriod);
+    $("kpis").innerHTML = (data.kpis || []).map(k => `<div class="kpi"><b>${format(k.value)}${k.kind === "rate" ? "%" : " хил."}</b><span>${esc(k.label)}</span></div>`).join("");
+    render();
   }
-  $("thead").innerHTML=hd;$("rows").innerHTML=h;
-}
-function render(){drawMap();drawInfo();drawTable()}
-var map=$("map");
-function pick(el){var p=el.closest&&el.closest("[data-d]");return p&&map.contains(p)?ent(p.getAttribute("data-d")):null}
-map.addEventListener("click",function(e){var n=pick(e.target);if(n){S.sel=n;S.hov=null;render()}});
-map.addEventListener("keydown",function(e){if(e.key==="Enter"||e.key===" "){var n=pick(e.target);if(n){e.preventDefault();S.sel=n;render()}}});
-map.addEventListener("mouseover",function(e){var n=pick(e.target);if(n!==S.hov){S.hov=n;drawInfo()}});
-map.addEventListener("mouseleave",function(){S.hov=null;drawInfo()});
-$("rows").addEventListener("click",function(e){var b=e.target.closest("button");if(!b)return;S.sel=b.dataset.d;render()});
-function thou(n) { var p = f(n, 1).split(","); return p[0].replace(/\B(?=(\d{3})+(?!\d))/g, " ") + "," + p[1]; }
-function drawKpis() {
-  var el = $("kpis"); if (!el || !X.kpis) return;
-  el.innerHTML = X.kpis.map(function (k) {
-    var v = k.kind === "rate" ? f(k.value, 1) + "%" : thou(k.value) + " хил.";
-    return '<div class="kpi"><b>' + v + '</b><span>' + k.label + '</span></div>';
-  }).join("");
-}
-drawKpis();
-build(); syncCtl(); render();
-}
 
-Promise.all([
-  fetch("/data/map.json").then(function (r) { if (!r.ok) throw new Error("map.json"); return r.json(); }),
-  fetch("/api/dataset").then(function (r) { if (!r.ok) throw new Error("api/dataset"); return r.json(); })
-]).then(function (r) { boot(r[0], r[1]); })
-  .catch(function (e) { fail("Данните не можаха да се заредят (" + e.message + ")."); console.error(e); });
+  const json = async url => {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`${url}: HTTP ${response.status}`);
+    return response.json();
+  };
+  const source = $("map");
+  Promise.all([json(source.dataset.geometry), json(source.dataset.dataset)])
+    .then(([geometry, data]) => boot(geometry, data))
+    .catch(error => {
+      $("info").textContent = "Данните не можаха да се заредят. Презаредете страницата или проверете връзката с приложението.";
+      console.error(error);
+    });
 })();

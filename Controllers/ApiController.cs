@@ -30,6 +30,6 @@ namespace Hackaton.Controllers
         // GET /api/dataset - всичко, което картата и таблиците на началната страница показват
         [HttpGet("dataset")]
         public async Task<IActionResult> Dataset()
-            => Ok(await _dataset.GetAsync(new[] { "2026Q1", "2026Q2" }));
+            => Ok(await _dataset.GetAsync());
     }
 }
