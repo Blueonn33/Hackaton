@@ -1,9 +1,13 @@
-﻿namespace Hackaton.Services
+﻿using Hackaton.Data;
+using Hackaton.Models;
+using Microsoft.EntityFrameworkCore;
+
+namespace Hackaton.Services
 {
     public class RankingService
     {
-        private readonly AppDbContext _db;
-        public RankingService(AppDbContext db) => _db = db;
+        private readonly ApplicationDbContext _db;
+        public RankingService(ApplicationDbContext db) => _db = db;
 
         public Task<RankingViewModel> GetAsync(RankingQuery q) => q.Kind switch
         {

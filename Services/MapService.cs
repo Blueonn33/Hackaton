@@ -1,7 +1,10 @@
-﻿public class MapService
+﻿using Hackaton.Data;
+using Hackaton.Models;
+
+public class MapService
 {
-    private readonly AppDbContext _db;
-    public MapService(AppDbContext db) => _db = db;
+    private readonly ApplicationDbContext _db;
+    public MapService(ApplicationDbContext db) => _db = db;
 
     public async Task<MapResultDto> GetEmploymentAsync(Indicator ind, Sex sex, string period)
     {
