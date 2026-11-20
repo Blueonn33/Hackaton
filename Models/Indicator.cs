@@ -2,8 +2,8 @@
 {
     public enum Indicator
     {
-        EmpRate15Plus = 0,
-        EmpRate15to64 = 1,
-        EmployedThousands = 2
+        EmpRate15Plus,
+        EmpRate15to64,
+        EmployedThousands
     }
 }

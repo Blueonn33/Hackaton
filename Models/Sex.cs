@@ -2,8 +2,8 @@
 {
     public enum Sex
     {
-        Total = 0,
-        Men = 1,
-        Women = 2
+        Total,
+        Men,
+        Women
     }
 }
