@@ -1,4 +1,4 @@
-﻿using Hackaton.Models;
+using Hackaton.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace Hackaton.Data
@@ -16,8 +16,19 @@ namespace Hackaton.Data
         protected override void OnModelCreating(ModelBuilder b)
         {
             b.Entity<EmploymentValue>()
-                .HasIndex(e => new { e.RegionId, e.Period, e.Indicator, e.Sex }).IsUnique();
+                .HasIndex(e => new { e.RegionId, e.StatRegionId, e.Period, e.Indicator, e.Sex })
+                .IsUnique();
             b.Entity<EmploymentValue>().Property(e => e.Value).HasPrecision(10, 2);
+
+            b.Entity<ProfessionShare>().Property(e => e.Share).HasPrecision(10, 4);
+            b.Entity<Unemployment>().Property(e => e.Rate).HasPrecision(6, 2);
+
+            b.Entity<Activity>().Property(e => e.Total).HasPrecision(10, 1);
+            b.Entity<Activity>().Property(e => e.Men).HasPrecision(10, 1);
+            b.Entity<Activity>().Property(e => e.Women).HasPrecision(10, 1);
+
+            b.Entity<StatRegion>().HasIndex(e => e.Code).IsUnique();
+            b.Entity<Region>().HasIndex(e => e.MapCode).IsUnique();
         }
     }
 }

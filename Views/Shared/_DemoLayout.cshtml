@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>@ViewData["Title"] - Заетост по области</title>
+    <link rel="stylesheet" href="~/css/employment.css" asp-append-version="true" />
+</head>
+<body>
+    <nav class="topnav" aria-label="Основно меню">
+        <a asp-controller="Home" asp-action="Index">Карта</a>
+        <a asp-controller="Ranking" asp-action="Index">Класации</a>
+    </nav>
+    <main>
+        @RenderBody()
+    </main>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

@@ -1,4 +1,4 @@
-﻿using Hackaton.Data;
+using Hackaton.Data;
 using Hackaton.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -28,7 +28,8 @@ namespace Hackaton.Services
                 .ToListAsync();
 
             var national = await _db.EmploymentValues.AsNoTracking()
-                .Where(v => v.RegionId == null && v.Indicator == q.Indicator
+                .Where(v => v.RegionId == null && v.StatRegionId == null
+                         && v.Indicator == q.Indicator
                          && v.Sex == q.Sex && v.Period == q.Period)
                 .Select(v => v.Value).FirstOrDefaultAsync();
 
@@ -118,6 +119,9 @@ namespace Hackaton.Services
                 Rows = rows
             };
         }
+
+        public Task<List<Profession>> GetProfessionsAsync() =>
+            _db.Professions.AsNoTracking().OrderBy(p => p.Id).ToListAsync();
 
         private static string IndicatorName(Indicator i) => i switch
         {

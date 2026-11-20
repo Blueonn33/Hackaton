@@ -8,13 +8,16 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.Diagnostics.EntityFrameworkCore" Version="10.0.11" />
-    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.11" />
-    <PackageReference Include="Microsoft.AspNetCore.Identity.UI" Version="10.0.11" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.11" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.11" PrivateAssets="all" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="10.0.11" />
     <PackageReference Include="System.Security.Cryptography.Pkcs" Version="9.0.23" />
+  </ItemGroup>
+
+  <!-- seed.json и CSV файловете трябва да са до приложението и след publish -->
+  <ItemGroup>
+    <Content Update="Data\Seed\**" CopyToPublishDirectory="PreserveNewest" />
+    <None Update="Data\Imports\**" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

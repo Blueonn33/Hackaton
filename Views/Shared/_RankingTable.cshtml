@@ -1,0 +1,91 @@
+﻿@model Hackaton.Models.RankingViewModel
+@using Hackaton.Models
+@{
+    var bg = new System.Globalization.CultureInfo("bg-BG");
+    var inv = System.Globalization.CultureInfo.InvariantCulture;
+    string F(decimal v) => v.ToString("N" + Model.Decimals, bg);
+    var isProf = Model.Kind == RankingKind.Profession;
+    var isUnemp = Model.Kind == RankingKind.Unemployment;
+}
+
+<p class="sub">@Model.Subtitle</p>
+
+<div class="tablewrap">
+    <table>
+        <thead>
+            <tr>
+                <th class="num">№</th>
+                <th>Област</th>
+                <th>@Model.ValueHeader</th>
+                @if (isProf)
+                {
+                    <th class="num">≈ души (ДЕМО)</th>
+                    <th class="num">Заети, хил. (реално)</th>
+                }
+                @if (isUnemp)
+                {
+                    <th>Източник</th>
+                }
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var r in Model.Rows)
+            {
+                var cls = (r.IsDemo ? "demorow" : "") + (r.RegionName == Model.Selected ? " sel" : "");
+                <tr class="@cls">
+                    <td class="num">@r.Rank</td>
+                    <td><button type="button" data-d="@r.RegionName">@r.RegionName</button></td>
+                    <td>
+                        <div class="cell">
+                            <span class="num" style="min-width:3.4em;text-align:right">@F(r.Value)@Model.Unit</span>
+                            <span class="bar"><i style="width:@((r.Value / Model.Max * 100).ToString("0.##", inv))%"></i></span>
+                            @if (r.IsDemo && !isProf && !isUnemp)
+                            {
+                                <span class="tag">ДЕМО</span>
+                            }
+                        </div>
+                    </td>
+                    @if (isProf)
+                    {
+                        <td class="num">@(r.Persons?.ToString("N0", bg))</td>
+                        <td class="num">@(r.EmployedThousands?.ToString("N1", bg))</td>
+                    }
+                    @if (isUnemp)
+                    {
+                        <td>
+                            @if (r.IsDemo)
+                            {
+                                <span class="tag" style="margin:0">ДЕМО</span>
+                            }
+                            else
+                            {
+
+                                <text>реално (АЗ)</text>
+                            }
+                        </td>
+                    }
+                </tr>
+            }
+            <tr class="nat">
+                <td></td>
+                <td>@Model.NationalLabel</td>
+                <td><span class="num">@F(Model.National)@Model.Unit</span></td>
+                @if (isProf)
+                {
+                    <td></td>
+                    <td></td>
+                }
+                @if (isUnemp)
+                {
+                    <td></td>
+                }
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+@if (!string.IsNullOrEmpty(Model.Note))
+{
+    <p class="note">@Model.Note</p>
+}
+

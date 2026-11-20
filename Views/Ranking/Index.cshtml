@@ -1,91 +1,66 @@
-﻿@model Hackaton.Models.RankingViewModel
-@using Hackaton.Models
+@model RankingPageViewModel
 @{
-    var bg = new System.Globalization.CultureInfo("bg-BG");
-    var inv = System.Globalization.CultureInfo.InvariantCulture;
-    string F(decimal v) => v.ToString("N" + Model.Decimals, bg);
-    var isProf = Model.Kind == RankingKind.Profession;
-    var isUnemp = Model.Kind == RankingKind.Unemployment;
+    ViewData["Title"] = "Класации";
+    Layout = "_DemoLayout";
+    var q = Model.Query;
 }
 
-<p class="sub">@Model.Subtitle</p>
+<h1>Класации по области</h1>
+<p class="lead">Изберете вид класация. Стойностите, означени като „ДЕМО“, са измислени за илюстрация.</p>
 
-<div class="tablewrap">
-    <table>
-        <thead>
-            <tr>
-                <th class="num">№</th>
-                <th>Област</th>
-                <th>@Model.ValueHeader</th>
-                @if (isProf)
+<section class="panel" aria-labelledby="ft">
+    <h2 id="ft">Филтър</h2>
+    <form method="get" asp-controller="Ranking" asp-action="Index" class="controls">
+        <div class="wide">
+            <label for="kind">Вид класация</label>
+            <select id="kind" name="kind">
+                <option value="Employment" selected="@(q.Kind == RankingKind.Employment)">Заетост (НСИ)</option>
+                <option value="Unemployment" selected="@(q.Kind == RankingKind.Unemployment)">Регистрирана безработица (АЗ)</option>
+                <option value="Profession" selected="@(q.Kind == RankingKind.Profession)">Дял по професия (ДЕМО)</option>
+            </select>
+        </div>
+        <div>
+            <label for="indicator">Показател (заетост)</label>
+            <select id="indicator" name="indicator">
+                <option value="EmpRate15to64" selected="@(q.Indicator == Indicator.EmpRate15to64)">Заетост 15–64 г.</option>
+                <option value="EmpRate15Plus" selected="@(q.Indicator == Indicator.EmpRate15Plus)">Заетост 15+ г.</option>
+                <option value="EmployedThousands" selected="@(q.Indicator == Indicator.EmployedThousands)">Заети, хил.</option>
+            </select>
+        </div>
+        <div>
+            <label for="sex">Пол</label>
+            <select id="sex" name="sex">
+                <option value="Total" selected="@(q.Sex == Sex.Total)">Общо</option>
+                <option value="Men" selected="@(q.Sex == Sex.Men)">Мъже</option>
+                <option value="Women" selected="@(q.Sex == Sex.Women)">Жени</option>
+            </select>
+        </div>
+        <div>
+            <label for="period">Тримесечие</label>
+            <select id="period" name="period">
+                <option value="2026Q1" selected="@(q.Period == "2026Q1")">Q1 2026</option>
+                <option value="2026Q2" selected="@(q.Period == "2026Q2")">Q2 2026</option>
+            </select>
+        </div>
+        <div class="wide">
+            <label for="professionId">Професия (за ДЕМО класация)</label>
+            <select id="professionId" name="professionId">
+                @foreach (var p in Model.Professions)
                 {
-                    <th class="num">≈ души (ДЕМО)</th>
-                    <th class="num">Заети, хил. (реално)</th>
+                    <option value="@p.Id" selected="@(q.ProfessionId == p.Id)">@p.Name</option>
                 }
-                @if (isUnemp)
-                {
-                    <th>Източник</th>
-                }
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var r in Model.Rows)
-            {
-                var cls = (r.IsDemo ? "demorow" : "") + (r.RegionName == Model.Selected ? " sel" : "");
-                <tr class="@cls">
-                    <td class="num">@r.Rank</td>
-                    <td><button type="button" data-d="@r.RegionName">@r.RegionName</button></td>
-                    <td>
-                        <div class="cell">
-                            <span class="num" style="min-width:3.4em;text-align:right">@F(r.Value)@Model.Unit</span>
-                            <span class="bar"><i style="width:@((r.Value / Model.Max * 100).ToString("0.##", inv))%"></i></span>
-                            @if (r.IsDemo && !isProf && !isUnemp)
-                            {
-                                <span class="tag">ДЕМО</span>
-                            }
-                        </div>
-                    </td>
-                    @if (isProf)
-                    {
-                        <td class="num">@(r.Persons?.ToString("N0", bg))</td>
-                        <td class="num">@(r.EmployedThousands?.ToString("N1", bg))</td>
-                    }
-                    @if (isUnemp)
-                    {
-                        <td>
-                            @if (r.IsDemo)
-                            {
-                                <span class="tag" style="margin:0">ДЕМО</span>
-                            }
-                            else
-                            {
+            </select>
+        </div>
+        <div>
+            <label>&nbsp;</label>
+            <button type="submit" class="btn-go">Покажи</button>
+        </div>
+    </form>
+</section>
 
-                                <text>реално (АЗ)</text>
-                            }
-                        </td>
-                    }
-                </tr>
-            }
-            <tr class="nat">
-                <td></td>
-                <td>@Model.NationalLabel</td>
-                <td><span class="num">@F(Model.National)@Model.Unit</span></td>
-                @if (isProf)
-                {
-                    <td></td>
-                    <td></td>
-                }
-                @if (isUnemp)
-                {
-                    <td></td>
-                }
-            </tr>
-        </tbody>
-    </table>
-</div>
-
-@if (!string.IsNullOrEmpty(Model.Note))
-{
-    <p class="note">@Model.Note</p>
-}
-
+<section class="panel" aria-labelledby="rt">
+    <h2 id="rt">Класация</h2>
+    <div id="ranking">
+        <partial name="_RankingTable" model="Model.Table" />
+    </div>
+</section>

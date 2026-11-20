@@ -1,4 +1,4 @@
-﻿namespace Hackaton.Models
+namespace Hackaton.Models
 {
     public enum RankingKind { Employment, Unemployment, Profession }
 
@@ -34,6 +34,14 @@
         public string Note { get; init; } = "";
         public string? Selected { get; init; }
         public List<RankingRow> Rows { get; init; } = new();
-        public decimal Max => Rows.Count == 0 ? 1 : Rows.Max(r => r.Value);
+        public decimal Max => Rows.Count == 0 ? 1 : Math.Max(Rows.Max(r => r.Value), 0.0001m);
+    }
+
+    /// <summary>Модел на страницата /Ranking (филтри + таблица).</summary>
+    public class RankingPageViewModel
+    {
+        public RankingQuery Query { get; init; } = new();
+        public RankingViewModel Table { get; init; } = new();
+        public List<Profession> Professions { get; init; } = new();
     }
 }

@@ -4,6 +4,8 @@
     {
         EmpRate15Plus,
         EmpRate15to64,
-        EmployedThousands
+        EmployedThousands,
+        UnemployedThousands,
+        UnemploymentRate
     }
 }
